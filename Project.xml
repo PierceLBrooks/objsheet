@@ -40,7 +40,14 @@
           </export>
           <export type="libraries">
             <key>SFML_LIBRARIES_PATH</key>
-            <value><install></install>/bin</value>
+            <value>
+              <switch id="BUILDSTER_OS">
+                <case check="Windows"><install></install>/bin</case>
+                <case check="Linux"><install></install>/lib</case>
+                <case check="Darwin"><install></install>/lib</case>
+                <default><quit></quit></default>
+              </switch>
+            </value>
           </export>
         </exports>
         <imports></imports>
@@ -59,11 +66,11 @@
         </generator>
         <definitions></definitions>
         <links>
-          <link>sfml3d-graphics-*</link>
-          <link>sfml3d-window-*</link>
-          <link>sfml3d-audio-*</link>
-          <link>sfml3d-network-*</link>
-          <link>sfml3d-system-*</link>
+          <link>libsfml3d-graphics-*</link>
+          <link>libsfml3d-window-*</link>
+          <link>libsfml3d-audio-*</link>
+          <link>libsfml3d-network-*</link>
+          <link>libsfml3d-system-*</link>
           <if_check id="BUILDSTER_OS" check="Windows">
             <link>setupapi</link>
             <link>iphlpapi</link>

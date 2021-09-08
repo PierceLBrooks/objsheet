@@ -5,23 +5,23 @@
 #include <vector>
 #include <string>
 #include <cmath>
-#include <SFML/Graphics/RenderWindow.hpp>
-#include <SFML/Window/Event.hpp>
-#include <SFML/Window/Mouse.hpp>
+#include <SFML3D/Graphics/RenderWindow.hpp>
+#include <SFML3D/Window/Event.hpp>
+#include <SFML3D/Window/Mouse.hpp>
 
 int main()
 {
-    sf::RenderWindow* window = new sf::RenderWindow();
-    window->create(sf::VideoMode(1280, 720), "Game");
+    sf3d::RenderWindow* window = new sf3d::RenderWindow();
+    window->create(sf3d::VideoMode(1280, 720), "Game");
     window->setFramerateLimit(60);
     while (window->isOpen())
     {
-        sf::Event event;
+        sf3d::Event event;
         while (window->pollEvent(event))
         {
             switch (event.type)
             {
-            case sf::Event::Closed:
+            case sf3d::Event::Closed:
                 window->close();
                 break;
             }
