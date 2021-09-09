@@ -3,6 +3,47 @@
   <project directory="../Project">
     <dependencies>
       <dependency>
+        <label>cppfs</label>
+        <subpath>build</subpath>
+        <remote>
+          <url>https://github.com/PierceLBrooks/cppfs.git</url>
+          <git_repo>
+            <branch>v1.3.0</branch>
+            <credentials>
+              <username>username</username>
+              <password>password</password>
+            </credentials>
+          </git_repo>
+        </remote>
+        <build>
+          <arguments>
+            <argument>-DOPTION_BUILD_TESTS=OFF</argument>
+          </arguments>
+          <cmake>
+            <generator>
+              <switch id="BUILDSTER_OS">
+                <case check="Windows">MinGW Makefiles</case>
+                <case check="Linux">Unix Makefiles</case>
+                <case check="Darwin">Unix Makefiles</case>
+                <default><quit></quit></default>
+              </switch>
+            </generator>
+            <source>..</source>
+          </cmake>
+        </build>
+        <exports>
+          <export type="headers">
+            <key>CPPFS_INCLUDE_PATH</key>
+            <value><install></install>/include</value>
+          </export>
+          <export type="libraries">
+            <key>CPPFS_LIBRARIES</key>
+            <value><install></install>/lib</value>
+          </export>
+        </exports>
+        <imports></imports>
+      </dependency>
+      <dependency>
         <label>glm</label>
         <subpath>build</subpath>
         <remote>
@@ -107,6 +148,7 @@
         </generator>
         <definitions></definitions>
         <links>
+          <link>cppfs*</link>
           <link>sfml3d-graphics-*</link>
           <link>sfml3d-window-*</link>
           <link>sfml3d-audio-*</link>
@@ -123,6 +165,7 @@
           </if_check>
         </links>
         <imports>
+          <import>cppfs</import>
           <import>glm</import>
           <import>sfml</import>
         </imports>

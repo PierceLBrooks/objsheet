@@ -1,6 +1,8 @@
 
 // Author: Pierce Brooks
 
+#include <regex>
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -17,6 +19,11 @@
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
+#include <cppfs/fs.h>
+#include <cppfs/FileHandle.h>
+#include <cppfs/FileIterator.h>
+
+using namespace cppfs;
 
 class ObjModel : public sf3d::Model
 {
@@ -59,6 +66,11 @@ private:
         textureCoordinateIndex -= 1;
         normalIndex -= 1;
 
+        if ((textureCoordinateIndex >= m_vertexTextureCoordinates.size()) && (m_vertexTextureCoordinates.empty()))
+        {
+            m_vertexTextureCoordinates.push_back(sf3d::Vector2f());
+        }
+
         if ((positionIndex >= m_vertexPositions.size()) ||
             (textureCoordinateIndex >= m_vertexTextureCoordinates.size()) ||
             (normalIndex >= m_vertexNormals.size()))
@@ -90,6 +102,9 @@ public:
         std::string line;
         std::istringstream lineStream;
         std::string token;
+        std::regex pattern;
+
+        pattern = std::regex("//");
 
         while (true)
         {
@@ -100,6 +115,8 @@ public:
             {
                 break;
             }
+
+            line = std::regex_replace(line, pattern, "/1/");
 
             lineStream.clear();
             lineStream.str(line);
@@ -160,9 +177,13 @@ private:
     std::vector<FaceData> m_faceData;
 };
 
-int run(sf3d::RenderWindow& window, sf3d::RenderTexture& frameTexture, const std::string& argument)
+int run(sf3d::RenderWindow& window, sf3d::RenderTexture& frameTexture, const std::string& target, const std::string& pattern)
 {
     bool focus = true;
+    float scale = 50.0f;
+    float animation = 0.0f;
+    float speed = 1.0f;
+    float velocity = 50.0f;
     float length = 1.0f;
     float magnitude = 0.0f;
     float pi = 3.141592654f;
@@ -172,11 +193,13 @@ int run(sf3d::RenderWindow& window, sf3d::RenderTexture& frameTexture, const std
     float delta = 0.0f;
     sf3d::Light light;
     sf3d::Clock clock;
+    sf3d::Color color;
     sf3d::Sprite frame(frameTexture.getTexture());
     sf3d::Cuboid axisX(sf3d::Vector3f(500.0f, 2.0f, 2.0f));
     sf3d::Cuboid axisY(sf3d::Vector3f(2.0f, 500.0f, 2.0f));
     sf3d::Cuboid axisZ(sf3d::Vector3f(2.0f, 2.0f, 500.0f));
     sf3d::Camera camera(90.0f, 0.001f, 1000.0f);
+    std::vector<ObjModel*> models;
     sf3d::Vector2f coordinate;
     sf3d::Vector3f previous;
     sf3d::Vector3f direction;
@@ -206,6 +229,101 @@ int run(sf3d::RenderWindow& window, sf3d::RenderTexture& frameTexture, const std
     axisZ.setPosition(sf3d::Vector3f(0.0f, 0.0f, 0.0f));
     axisZ.setOrigin(sf3d::Vector3f(1.0f, 1.0f, -250.0f));
     
+    color = sf3d::Color::White;
+
+    if (!target.empty())
+    {
+        sf3d::Vector3f bounds;
+        std::vector<std::string> paths;
+        std::regex regex = std::regex(pattern);
+        FileHandle directory = fs::open(target);
+        if (directory.isDirectory())
+        {
+            for (FileIterator iter = directory.begin(); iter != directory.end(); ++iter)
+            {
+                std::string path = *iter;
+                if (path.size() < 4)
+                {
+                    continue;
+                }
+                if (path.substr(path.size()-4) != ".obj")
+                {
+                    continue;
+                }
+                if (std::regex_match(path, regex))
+                {
+                    paths.push_back(path);
+                }
+            }
+        }
+        std::sort(paths.begin(), paths.end());
+        for (int i = 0; i != paths.size(); ++i)
+        {
+            sf3d::FloatBox box;
+            ObjModel* model = new ObjModel();
+            std::string path = paths[i];
+            if (path.empty())
+            {
+                continue;
+            }
+            if ((target.back() != '/') && (target.back() != '\\'))
+            {
+                if ((path.front() != '/') && (path.front() != '\\'))
+                {
+                    path = "/"+path;
+                }
+            }
+            else
+            {
+                if ((path.front() == '/') || (path.front() == '\\'))
+                {
+                    path = path.substr(1);
+                }
+            }
+            path = target+path;
+            if (!model->loadFromFile(path))
+            {
+                std::cout << path << std::endl;
+                delete model;
+                continue;
+            }
+            box = model->getGlobalBounds();
+            if (models.empty())
+            {
+                bounds.x = box.width;
+                bounds.y = box.height;
+                bounds.z = box.depth;
+            }
+            else
+            {
+                if (bounds.x < box.width)
+                {
+                    bounds.x = box.width;
+                }
+                if (bounds.y < box.height)
+                {
+                    bounds.y = box.height;
+                }
+                if (bounds.z < box.depth)
+                {
+                    bounds.z = box.depth;
+                }
+            }
+            std::cout << models.size() << '\t' << path << std::endl;
+            models.push_back(model);
+        }
+        if (!models.empty())
+        {
+            float size = scale / sqrtf(powf(bounds.x, 2.0f) + powf(bounds.y, 2.0f) + powf(bounds.z, 2.0f));
+            for (int i = 0; i != models.size(); ++i)
+            {
+                models[i]->setColor(color);
+                models[i]->setScale(sf3d::Vector3f(size, size, size));
+            }
+            speed *= (float)models.size();
+        }
+    }
+
     // Enable depth testing so we can draw 3D objects in any order
     frameTexture.enableDepthTest(true);
 
@@ -323,37 +441,37 @@ int run(sf3d::RenderWindow& window, sf3d::RenderTexture& frameTexture, const std
             // W key pressed : move forward
             if (sf3d::Keyboard::isKeyPressed(sf3d::Keyboard::Key::W))
             {
-                offset += sf3d::Vector3f(direction * 50.f * delta);
+                offset += sf3d::Vector3f(direction * velocity * delta);
             }
 
             // A key pressed : strafe left
             if (sf3d::Keyboard::isKeyPressed(sf3d::Keyboard::Key::A))
             {
-                offset += sf3d::Vector3f(rightVector * -50.f * delta);
+                offset += sf3d::Vector3f(rightVector * -velocity * delta);
             }
 
             // S key pressed : move backward
             if (sf3d::Keyboard::isKeyPressed(sf3d::Keyboard::Key::S))
             {
-                offset += sf3d::Vector3f(direction * -50.f * delta);
+                offset += sf3d::Vector3f(direction * -velocity * delta);
             }
 
             // D key pressed : strafe right
             if (sf3d::Keyboard::isKeyPressed(sf3d::Keyboard::Key::D))
             {
-                offset += sf3d::Vector3f(rightVector * 50.f * delta);
+                offset += sf3d::Vector3f(rightVector * velocity * delta);
             }
 
             // Space bar pressed : move upwards
             if (sf3d::Keyboard::isKeyPressed(sf3d::Keyboard::Key::Space))
             {
-                offset += sf3d::Vector3f(0, 50.0f * delta, 0.0f);
+                offset += sf3d::Vector3f(0.0f, velocity * delta, 0.0f);
             }
 
             // Left shift key pressed : move downwards
             if (sf3d::Keyboard::isKeyPressed(sf3d::Keyboard::Key::LShift))
             {
-                offset += sf3d::Vector3f(0.0f, -50.0f * delta, 0.0f);
+                offset += sf3d::Vector3f(0.0f, -velocity * delta, 0.0f);
             }
 
             camera.setPosition(origin + offset);
@@ -389,6 +507,24 @@ int run(sf3d::RenderWindow& window, sf3d::RenderTexture& frameTexture, const std
         frameTexture.draw(axisX);
         frameTexture.draw(axisY);
         frameTexture.draw(axisZ);
+        if (!models.empty())
+        {
+            int previous = (int)animation;
+            animation += speed * delta;
+            while ((int)animation >= (int)models.size())
+            {
+                animation -= (float)models.size();
+            }
+            if (animation < 0.0f)
+            {
+                animation = 0.0f;
+            }
+            if ((int)animation != previous)
+            {
+                std::cout << previous << std::endl;
+            }
+            frameTexture.draw(*models[previous]);
+        }
 
         // Disable lighting and reset to 2D view to draw information
         sf3d::Light::disableLighting();
@@ -408,6 +544,12 @@ int run(sf3d::RenderWindow& window, sf3d::RenderTexture& frameTexture, const std
         window.draw(frame);
         window.display();
     }
+
+    for (int i = 0; i != models.size(); ++i)
+    {
+        delete models[i];
+    }
+
     return 0;
 }
 
@@ -427,13 +569,13 @@ int main(int argc, char** argv)
         arguments.push_back(std::string(argv[i]));
         std::cout << i << '\t' << arguments.back() << std::endl;
     }
-    if (arguments.size() < 2)
+    if (arguments.size() < 3)
     {
         window->close();
         delete window;
         return -1;
     }
-    result = run(*window, *frameTexture, arguments.back());
+    result = run(*window, *frameTexture, arguments[1], arguments[2]);
     delete frameTexture;
     delete window;
     return result;
