@@ -90,7 +90,14 @@
         <remote>
           <url>https://github.com/PierceLBrooks/SFML3D.git</url>
           <git_repo>
-            <branch>3dee</branch>
+            <branch>
+              <switch id="BUILDSTER_OS">
+                <case check="Windows">3dee</case>
+                <case check="Linux">3dee</case>
+                <case check="Darwin">macos</case>
+                <default><quit></quit></default>
+              </switch>
+            </branch>
             <credentials>
               <username>username</username>
               <password>password</password>

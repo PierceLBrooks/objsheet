@@ -235,8 +235,12 @@ int run(sf3d::RenderWindow& window, sf3d::RenderTexture& frameTexture, const std
     {
         sf3d::Vector3f bounds;
         std::vector<std::string> paths;
-        std::regex regex = std::regex(pattern);
+        std::regex* regex = nullptr;
         FileHandle directory = fs::open(target);
+        if (!pattern.empty())
+        {
+            regex = new std::regex(pattern);
+        }
         if (directory.isDirectory())
         {
             for (FileIterator iter = directory.begin(); iter != directory.end(); ++iter)
@@ -250,12 +254,13 @@ int run(sf3d::RenderWindow& window, sf3d::RenderTexture& frameTexture, const std
                 {
                     continue;
                 }
-                if (std::regex_match(path, regex))
+                if ((regex == nullptr) || (std::regex_match(path, *regex)))
                 {
                     paths.push_back(path);
                 }
             }
         }
+        delete regex;
         std::sort(paths.begin(), paths.end());
         for (int i = 0; i != paths.size(); ++i)
         {
@@ -569,11 +574,15 @@ int main(int argc, char** argv)
         arguments.push_back(std::string(argv[i]));
         std::cout << i << '\t' << arguments.back() << std::endl;
     }
-    if (arguments.size() < 3)
+    if (arguments.size() < 2)
     {
         window->close();
         delete window;
         return -1;
+    }
+    if (arguments.size() < 3)
+    {
+        arguments.push_back("");
     }
     result = run(*window, *frameTexture, arguments[1], arguments[2]);
     delete frameTexture;
